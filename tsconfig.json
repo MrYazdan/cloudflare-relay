@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-      /* Target a modern runtime: Cloudflare Workers run on the V8 isolate
-        and support recent ECMAScript features natively. */
+    /* Target a modern runtime: Cloudflare Workers run on the V8 isolate
+       and support recent ECMAScript features natively. */
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "Bundler",
@@ -12,12 +12,18 @@
        type packages rather than Node's typings. */
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"],
 
+    /* We import sibling modules with explicit `.ts` extensions (ESM style).
+       Allowed because wrangler/esbuild - not tsc - emits the bundle. */
     "allowImportingTsExtensions": true,
+
+    /* Strictness: we want maximum safety for a security-sensitive service. */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
+
+    /* We only type-check / bundle; wrangler (esbuild) emits the output. */
     "noEmit": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,

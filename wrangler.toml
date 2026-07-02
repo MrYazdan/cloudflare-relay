@@ -1,3 +1,108 @@
+# ---------------------------------------------------------------------------
+# Cloudflare Worker configuration
+# ---------------------------------------------------------------------------
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+#
+# IMPORTANT:
+#   - The shared encryption key is NOT stored here. It is a *secret* and must
+#     be set with `wrangler secret put SHARED_KEY` (see README).
+#   - Values under [vars] are public (they are bundled with the Worker and are
+#     visible in the dashboard). Only put non-sensitive configuration here.
+# ---------------------------------------------------------------------------
+
 name = "cloudflare-relay"
 main = "src/index.ts"
-compatibility_date = "2026-07-02"
+compatibility_date = "2024-09-23"
+
+# Observability: enable Workers logs so you can debug in production.
+[observability]
+enabled = true
+
+[vars]
+# Comma-separated allowlist of destination hostnames the Worker is permitted to
+# forward to. This is the SSRF / open-proxy guard: any request whose target host
+# is not in this list is rejected. Keep this as tight as possible, e.g.
+#   ALLOWED_HOSTS = "api.telegram.org,api.openai.com"
+#
+# Special value "*" DISABLES the allowlist and permits any https destination,
+# turning the Worker into an open proxy gated only by SHARED_KEY. The Worker
+# logs a security warning when this mode is active. Use only if you really mean
+# it.
+ALLOWED_HOSTS = "api.telegram.org"
+
+# Maximum accepted clock difference (in seconds) between the client-supplied
+# timestamp and the Worker's clock. Requests outside this window are rejected
+# as a basic replay-protection measure. 300s (5 min) is a sane default.
+MAX_CLOCK_SKEW_SECONDS = "300"
+
+# Hard cap on the *decrypted* inner request body size (in bytes) the Worker will
+# forward. Protects the Worker from being used to push huge payloads. 5 MiB.
+MAX_BODY_BYTES = "5242880"
+
+# Upstream request timeout in milliseconds. The forwarded request is aborted if
+# the destination does not respond within this window.
+UPSTREAM_TIMEOUT_MS = "20000"
+
+# --- Async queue relay rate limiting / retry (used by the /async path) -------
+# Per-key token bucket. Default ≈ 20 requests/minute, matching Telegram's
+# per-chat limit. The rate key defaults to the destination host, or the client
+# may set `rate_key` in the request (e.g. a chat id) for finer control.
+RATE_CAPACITY = "20"
+RATE_REFILL_PER_SECOND = "0.33"
+
+# Optional service-wide gate. Enable to cap total throughput (e.g. Telegram's
+# ≈30 requests/second global limit) regardless of per-key buckets.
+RATE_GLOBAL_ENABLED = "false"
+RATE_GLOBAL_CAPACITY = "30"
+RATE_GLOBAL_REFILL_PER_SECOND = "30"
+
+# Exponential backoff bounds for retrying transient upstream failures / 429s.
+RETRY_BASE_DELAY_SECONDS = "2"
+MAX_RETRY_DELAY_SECONDS = "900"
+
+# ---------------------------------------------------------------------------
+# OPTIONAL: strong replay protection via per-message nonce de-duplication.
+#
+# If you bind a KV namespace named REPLAY_KV, the Worker will additionally
+# reject any request whose `nonce` has already been seen (within the skew
+# window). This defends against replays that arrive inside the time window.
+#
+# To enable:
+#   1. wrangler kv namespace create REPLAY_KV
+#   2. Uncomment the block below and paste the generated id.
+# ---------------------------------------------------------------------------
+# [[kv_namespaces]]
+# binding = "REPLAY_KV"
+# id = "<your-kv-namespace-id>"
+
+# ---------------------------------------------------------------------------
+# ASYNC QUEUE RELAY (the POST /async path)
+#
+# REQUIRES the Workers Paid plan ($5/mo): both Durable Objects and Queues are
+# unavailable on the free tier. The synchronous POST / path does NOT need any
+# of the bindings below and keeps working on the free tier.
+# ---------------------------------------------------------------------------
+
+# Token-bucket rate limiter (Durable Object).
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]
+
+# Queue carrying validated async jobs, plus its dead-letter queue.
+[[queues.producers]]
+binding = "RELAY_QUEUE"
+queue = "relay-jobs"
+
+[[queues.consumers]]
+queue = "relay-jobs"
+max_batch_size = 10
+max_retries = 5
+dead_letter_queue = "relay-dlq"
+
+# Dead-letter queue consumer: jobs that exhausted their retries land here.
+[[queues.consumers]]
+queue = "relay-dlq"
