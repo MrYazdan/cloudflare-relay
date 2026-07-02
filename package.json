@@ -1,26 +1,35 @@
 {
   "name": "cloudflare-relay",
-  "version": "1.0.0",
-  "description": "End to end encrypted relay running on Cloudflare Workers",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker that acts as an end-to-end encrypted relay/reverse-proxy for backend services",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "proxy",
+    "relay"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/MrYazdan/cloudflare-relay#readme",
+  "bugs": {
+    "url": "https://github.com/MrYazdan/cloudflare-relay/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MrYazdan/cloudflare-relay.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/MrYazdan/cloudflare-relay/issues"
-  },
-  "homepage": "https://github.com/MrYazdan/cloudflare-relay#readme",
   "devDependencies": {
-    "@types/node": "^26.1.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "@cloudflare/vitest-pool-workers": "^0.5.40",
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "typescript": "^5.6.2",
+    "vitest": "2.1.9",
+    "wrangler": "^3.78.0"
   }
 }
