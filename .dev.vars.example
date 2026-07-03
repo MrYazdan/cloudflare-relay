@@ -1,0 +1,9 @@
+# Local development secrets for `wrangler dev`.
+#
+# Copy this file to `.dev.vars` (which is git ignored) and fill in the value.
+# In production, set the secret instead with:
+#   wrangler secret put SHARED_KEY
+#
+# Generate a key with:  openssl rand -base64 32
+# Base64-encoded 32-byte AES-256 shared key. Keep this identical on the backend.
+SHARED_KEY="paste-your-base64-32-byte-key-here"
